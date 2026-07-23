@@ -1,0 +1,11 @@
+{
+  "test_conditionals": [
+    {
+      "path": "baselineextra/baselineextra_test.go",
+      "function": "TestBad",
+      "kind": "if",
+      "count": 1
+    }
+  ],
+  "white_box_files": []
+}

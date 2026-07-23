@@ -1,0 +1,19 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: true
+      - run: go test ./...
+      - run: go run ./cmd/teststyle -write-baseline -baseline /tmp/teststyle-baseline.json -root .
+      - run: go run ./cmd/teststyle -baseline /tmp/teststyle-baseline.json -root .

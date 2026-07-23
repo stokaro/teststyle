@@ -87,6 +87,39 @@ done:
 	})
 }
 
+func TestScanIgnoresNonTestHelpersWithTestPrefixes(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "sample/helpers_test.go", `package sample_test
+
+import "testing"
+
+func TestdataHelper() {
+	if true {}
+}
+
+func FuzzerSeed() {
+	if true {}
+}
+
+func ExampleHelper(input string) {
+	if true {}
+}
+
+func TestReal(t *testing.T) {
+	if true {}
+}
+`)
+
+	got, err := teststyle.Scan(dir)
+
+	assertNoError(t, err)
+	assertDeepEqual(t, got, teststyle.Baseline{
+		TestConditionals: []teststyle.ConditionalBaseline{
+			{Path: "sample/helpers_test.go", Function: "TestReal", Kind: "if", Count: 1},
+		},
+	})
+}
+
 func TestBaselineRoundTrip(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "baseline.json")

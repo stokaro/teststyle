@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/golangci/plugin-module-register/register"
 	"github.com/stokaro/teststyle"
 	"github.com/stokaro/teststyle/golangci"
 )
@@ -45,7 +46,7 @@ func TestNewAcceptsStringSliceDisabledRules(t *testing.T) {
 func TestNewRejectsInvalidConfigShape(t *testing.T) {
 	_, err := golangci.New("invalid")
 
-	assertErrorContains(t, err, "teststyle plugin config must be a map")
+	assertErrorContains(t, err, "cannot unmarshal string")
 }
 
 func TestNewRejectsInvalidDisabledRules(t *testing.T) {
@@ -53,7 +54,32 @@ func TestNewRejectsInvalidDisabledRules(t *testing.T) {
 		"disabled_rules": []any{42},
 	})
 
-	assertErrorContains(t, err, "disabled_rules entries must be strings")
+	assertErrorContains(t, err, "cannot unmarshal number into Go struct field Config.disabled_rules")
+}
+
+func TestNewRejectsUnknownConfigKeys(t *testing.T) {
+	_, err := golangci.New(map[string]any{
+		"baseline": ".teststyle-baseline.json",
+	})
+
+	assertErrorContains(t, err, `unknown field "baseline"`)
+}
+
+func TestModulePluginRegistration(t *testing.T) {
+	newPlugin, err := register.GetPlugin("teststyle")
+	assertNoError(t, err)
+
+	plugin, err := newPlugin(map[string]any{
+		"disabled_rules": []any{teststyle.RuleNoGoto},
+	})
+	assertNoError(t, err)
+
+	analyzers, err := plugin.BuildAnalyzers()
+	assertNoError(t, err)
+
+	assertEqual(t, plugin.GetLoadMode(), register.LoadModeSyntax)
+	assertEqual(t, len(analyzers), 1)
+	assertEqual(t, analyzers[0].Name, "teststyle")
 }
 
 func assertNoError(t *testing.T, err error) {

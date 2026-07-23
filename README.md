@@ -3,8 +3,7 @@
 `teststyle` is a Go linter for declarative tests and black-box-by-default test
 packages.
 
-It started as Ptah's internal test-style auditor and is now a reusable module
-with:
+It provides:
 
 - a standalone CLI: `go tool teststyle`
 - a `go/analysis` analyzer
@@ -169,6 +168,10 @@ Check a repository against an existing baseline:
 ```bash
 go tool teststyle -baseline .teststyle-baseline.json -root .
 ```
+
+If the baseline file does not exist, `teststyle` treats it as an empty baseline.
+That makes clean repositories runnable without an adoption file while still
+failing on any current violation.
 
 Write a baseline during initial adoption:
 

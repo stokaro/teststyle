@@ -1,8 +1,11 @@
 module github.com/stokaro/teststyle
 
-go 1.26.5
+go 1.25.0
 
-require golang.org/x/tools v0.48.0
+require (
+	github.com/golangci/plugin-module-register v0.1.2
+	golang.org/x/tools v0.48.0
+)
 
 require (
 	golang.org/x/mod v0.38.0 // indirect

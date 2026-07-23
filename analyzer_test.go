@@ -28,3 +28,14 @@ func TestAnalyzerBaselineDoesNotHideNewViolations(t *testing.T) {
 	assertNoError(t, err)
 	analysistest.Run(t, testdata, analyzer, "baselineextra")
 }
+
+func TestAnalyzerMissingBaselineUsesEmptyBaseline(t *testing.T) {
+	testdata := analysistest.TestData()
+	analyzer, err := teststyle.NewAnalyzer(teststyle.Config{
+		Root:         filepath.Join(testdata, "src"),
+		BaselinePath: filepath.Join(testdata, "missing-baseline.json"),
+	})
+
+	assertNoError(t, err)
+	analysistest.Run(t, testdata, analyzer, "violations")
+}

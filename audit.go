@@ -16,6 +16,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"unicode"
 
 	"golang.org/x/tools/go/analysis"
 )
@@ -84,13 +85,26 @@ var Analyzer = mustAnalyzer(Config{})
 // NewAnalyzer returns a configured go/analysis analyzer.
 func NewAnalyzer(config Config) (*analysis.Analyzer, error) {
 	config = config.normalized()
+	var err error
+	if config.Root != "" {
+		config.Root, err = filepath.Abs(config.Root)
+		if err != nil {
+			return nil, fmt.Errorf("resolve root: %w", err)
+		}
+	}
+	if config.BaselinePath != "" && !filepath.IsAbs(config.BaselinePath) && config.Root != "" {
+		config.BaselinePath = filepath.Join(config.Root, config.BaselinePath)
+	}
 	var baseline Baseline
 	if config.BaselinePath != "" {
 		read, err := ReadBaseline(config.BaselinePath)
 		if err != nil {
-			return nil, err
+			if !errors.Is(err, os.ErrNotExist) {
+				return nil, err
+			}
+		} else {
+			baseline = read
 		}
-		baseline = read
 	}
 	disabled := disabledRuleSet(config.DisabledRules)
 	tracker := newBaselineTracker(baseline)
@@ -300,7 +314,7 @@ func scanConditionals(
 	var findings []Finding
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
-		if !ok || fn.Body == nil || !isTestFunction(fn.Name.Name) {
+		if !ok || fn.Body == nil || !isTestFunction(fn) {
 			continue
 		}
 		ast.Inspect(fn.Body, func(node ast.Node) bool {
@@ -367,10 +381,53 @@ func skippedDirectory(name string) bool {
 	return name == ".git" || name == "vendor" || name == "node_modules" || name == "testdata"
 }
 
-func isTestFunction(name string) bool {
-	return strings.HasPrefix(name, "Test") ||
-		strings.HasPrefix(name, "Fuzz") ||
-		strings.HasPrefix(name, "Example")
+func isTestFunction(fn *ast.FuncDecl) bool {
+	if fn.Recv != nil {
+		return false
+	}
+	switch {
+	case isTestName(fn.Name.Name, "Test"):
+		return hasSingleTestingPointerParam(fn, "T")
+	case isTestName(fn.Name.Name, "Fuzz"):
+		return hasSingleTestingPointerParam(fn, "F")
+	case isTestName(fn.Name.Name, "Example"):
+		return hasNoParams(fn)
+	default:
+		return false
+	}
+}
+
+func isTestName(name string, prefix string) bool {
+	if !strings.HasPrefix(name, prefix) {
+		return false
+	}
+	if len(name) == len(prefix) {
+		return true
+	}
+	for _, ch := range name[len(prefix):] {
+		return !unicode.IsLower(ch)
+	}
+	return true
+}
+
+func hasSingleTestingPointerParam(fn *ast.FuncDecl, typeName string) bool {
+	if fn.Type.Params == nil || len(fn.Type.Params.List) != 1 {
+		return false
+	}
+	star, ok := fn.Type.Params.List[0].Type.(*ast.StarExpr)
+	if !ok {
+		return false
+	}
+	selector, ok := star.X.(*ast.SelectorExpr)
+	if !ok || selector.Sel.Name != typeName {
+		return false
+	}
+	ident, ok := selector.X.(*ast.Ident)
+	return ok && ident.Name == "testing"
+}
+
+func hasNoParams(fn *ast.FuncDecl) bool {
+	return fn.Type.Params == nil || len(fn.Type.Params.List) == 0
 }
 
 func scanWhiteBoxFile(
@@ -463,7 +520,9 @@ func hasWhiteBoxJustification(path string, prefix string) bool {
 	if err != nil {
 		return false
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	scanner := bufio.NewScanner(file)
 	seenPackage := false

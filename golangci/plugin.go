@@ -39,7 +39,11 @@ func configFromAny(conf any) (teststyle.Config, error) {
 	if value, ok := values["white_box_justification_prefix"].(string); ok {
 		config.WhiteBoxJustificationPrefix = value
 	}
-	if raw, ok := values["disabled_rules"].([]any); ok {
+	switch raw := values["disabled_rules"].(type) {
+	case nil:
+	case []string:
+		config.DisabledRules = append(config.DisabledRules, raw...)
+	case []any:
 		config.DisabledRules = make([]string, 0, len(raw))
 		for _, item := range raw {
 			value, ok := item.(string)
@@ -48,6 +52,8 @@ func configFromAny(conf any) (teststyle.Config, error) {
 			}
 			config.DisabledRules = append(config.DisabledRules, value)
 		}
+	default:
+		return teststyle.Config{}, fmt.Errorf("disabled_rules must be a string list, got %T", raw)
 	}
 	return config, nil
 }

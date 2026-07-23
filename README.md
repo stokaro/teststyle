@@ -26,6 +26,8 @@ may contain conditionals, but helpers should not hide assertion-selection logic.
 
 ## Bad And Good Examples
 
+### `teststyle-no-if`
+
 Bad:
 
 ```go
@@ -50,6 +52,56 @@ func TestParseConfig(t *testing.T) {
 	assertEqual(t, got.Name, "app")
 }
 ```
+
+### `teststyle-no-switch`
+
+Bad:
+
+```go
+func TestRenderDialect(t *testing.T) {
+	switch dialect {
+	case "postgres":
+		assertPostgres(t)
+	default:
+		assertGeneric(t)
+	}
+}
+```
+
+Good:
+
+```go
+func TestRenderDialect_Postgres(t *testing.T) {
+	assertPostgres(t)
+}
+
+func TestRenderDialect_Generic(t *testing.T) {
+	assertGeneric(t)
+}
+```
+
+### `teststyle-no-goto`
+
+Bad:
+
+```go
+func TestCleanup(t *testing.T) {
+	goto cleanup
+
+cleanup:
+	assertClean(t)
+}
+```
+
+Good:
+
+```go
+func TestCleanup(t *testing.T) {
+	assertClean(t)
+}
+```
+
+### `teststyle-whitebox-filename`
 
 Bad:
 
@@ -79,6 +131,30 @@ func TestParseDefaults(t *testing.T) {}
 ```
 
 The file must be named `*_internal_test.go`.
+
+### `teststyle-whitebox-justification`
+
+Bad:
+
+```go
+package config
+
+import "testing"
+
+func TestParseDefaults(t *testing.T) {}
+```
+
+Good:
+
+```go
+package config
+// White-box testing required: parseDefaults is an unexported state-machine
+// helper whose edge cases cannot be isolated through the exported API.
+
+import "testing"
+
+func TestParseDefaults(t *testing.T) {}
+```
 
 ## Standalone Usage
 
@@ -146,6 +222,8 @@ linters:
 The module-plugin path uses the same analyzer and rule IDs as the standalone
 CLI. Baseline matching is count-aware, so a baseline entry for one `if` does not
 hide a second newly introduced `if`.
+
+Complete example configs are available in `examples/golangci/`.
 
 ## Baseline Format
 

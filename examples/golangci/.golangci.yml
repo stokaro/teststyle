@@ -1,0 +1,15 @@
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - teststyle
+  settings:
+    custom:
+      teststyle:
+        type: module
+        description: Declarative Go test style linter.
+        settings:
+          baseline_path: .teststyle-baseline.json
+          root: .
+          disabled_rules: []

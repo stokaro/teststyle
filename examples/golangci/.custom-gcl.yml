@@ -1,0 +1,5 @@
+version: v2.3.0
+plugins:
+  - module: github.com/stokaro/teststyle
+    import: github.com/stokaro/teststyle/golangci
+    version: v0.1.0

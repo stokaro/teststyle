@@ -39,6 +39,13 @@ type Config struct {
 	BaselinePath                string   `json:"baseline_path"`
 	Root                        string   `json:"root"`
 	WhiteBoxJustificationPrefix string   `json:"white_box_justification_prefix"`
+	// SkipExamples exempts parameterless Example* functions from the
+	// conditional rules. An example is documentation first: the `if err !=
+	// nil` it shows is often exactly what a reader should copy, so a
+	// repository can keep examples idiomatic while holding Test* and Fuzz*
+	// functions declarative. White-box file rules are unaffected, since they
+	// judge files rather than functions.
+	SkipExamples bool `json:"skip_examples"`
 }
 
 // Baseline records known test-style violations. Cleanup PRs should reduce this
@@ -300,7 +307,7 @@ func scanFile(
 	disabled map[string]struct{},
 ) []Finding {
 	var findings []Finding
-	findings = append(findings, scanConditionals(fset, relativePath, file, disabled)...)
+	findings = append(findings, scanConditionals(fset, relativePath, file, config, disabled)...)
 	findings = append(findings, scanWhiteBoxFile(filename, relativePath, file.Name.Name, file.Package, config, disabled)...)
 	return findings
 }
@@ -309,12 +316,16 @@ func scanConditionals(
 	fset *token.FileSet,
 	path string,
 	file *ast.File,
+	config Config,
 	disabled map[string]struct{},
 ) []Finding {
 	var findings []Finding
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
 		if !ok || fn.Body == nil || !isTestFunction(fn) {
+			continue
+		}
+		if config.SkipExamples && isExampleFunction(fn) {
 			continue
 		}
 		ast.Inspect(fn.Body, func(node ast.Node) bool {
@@ -395,6 +406,13 @@ func isTestFunction(fn *ast.FuncDecl) bool {
 	default:
 		return false
 	}
+}
+
+// isExampleFunction reports whether fn is a testable example: a parameterless
+// function whose name the testing package would treat as Example output. It is
+// the subset of isTestFunction that Config.SkipExamples exempts.
+func isExampleFunction(fn *ast.FuncDecl) bool {
+	return fn.Recv == nil && isTestName(fn.Name.Name, "Example") && hasNoParams(fn)
 }
 
 func isTestName(name string, prefix string) bool {

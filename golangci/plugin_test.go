@@ -43,6 +43,16 @@ func TestNewAcceptsStringSliceDisabledRules(t *testing.T) {
 	assertEqual(t, analyzers[0].Name, "teststyle")
 }
 
+func TestNewAcceptsSkipExamples(t *testing.T) {
+	analyzers, err := golangci.New(map[string]any{
+		"skip_examples": true,
+	})
+
+	assertNoError(t, err)
+	assertEqual(t, len(analyzers), 1)
+	assertEqual(t, analyzers[0].Name, "teststyle")
+}
+
 func TestNewRejectsInvalidConfigShape(t *testing.T) {
 	_, err := golangci.New("invalid")
 
@@ -54,7 +64,12 @@ func TestNewRejectsInvalidDisabledRules(t *testing.T) {
 		"disabled_rules": []any{42},
 	})
 
-	assertErrorContains(t, err, "cannot unmarshal number into Go struct field Config.disabled_rules")
+	// The wording between these two fragments is the standard library's and
+	// changed across Go releases ("Go struct field Config.disabled_rules"
+	// before Go 1.26, "Config.disabled_rules.0 of type string" after), so the
+	// assertion pins only the parts the caller can rely on.
+	assertErrorContains(t, err, "cannot unmarshal number into")
+	assertErrorContains(t, err, "disabled_rules")
 }
 
 func TestNewRejectsUnknownConfigKeys(t *testing.T) {

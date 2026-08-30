@@ -43,6 +43,44 @@ func TestSample(t *testing.T) {
 	assertEqual(t, code, 1)
 }
 
+func TestRun_SkipExamplesExemptsExampleConditionals(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "example_test.go"), `package sample_test
+
+import "fmt"
+
+func ExampleParse() {
+	if err := error(nil); err != nil {
+		fmt.Println(err)
+	}
+	// Output:
+}
+`)
+
+	code := run([]string{"-root", dir, "-skip-examples"})
+
+	assertEqual(t, code, 0)
+}
+
+func TestRun_ExampleConditionalsReportedByDefault(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, filepath.Join(dir, "example_test.go"), `package sample_test
+
+import "fmt"
+
+func ExampleParse() {
+	if err := error(nil); err != nil {
+		fmt.Println(err)
+	}
+	// Output:
+}
+`)
+
+	code := run([]string{"-root", dir})
+
+	assertEqual(t, code, 1)
+}
+
 func writeFile(t *testing.T, path string, content string) {
 	t.Helper()
 	err := os.WriteFile(path, []byte(content), 0o600)

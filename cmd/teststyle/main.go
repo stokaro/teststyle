@@ -21,11 +21,12 @@ func run(args []string) int {
 	writeBaseline := flags.Bool("write-baseline", false, "Rewrite the baseline from current findings")
 	root := flags.String("root", ".", "Repository root to scan")
 	disabledRules := flags.String("disable", "", "Comma-separated rule IDs to disable")
+	skipExamples := flags.Bool("skip-examples", false, "Exempt parameterless Example* functions from the conditional rules")
 	if err := flags.Parse(args); err != nil {
 		return 2
 	}
 
-	config := teststyle.Config{DisabledRules: splitCommaList(*disabledRules)}
+	config := teststyle.Config{DisabledRules: splitCommaList(*disabledRules), SkipExamples: *skipExamples}
 	current, err := teststyle.ScanWithConfig(*root, config)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "teststyle: scan failed: %v\n", err)

@@ -87,6 +87,68 @@ done:
 	})
 }
 
+func TestScanWithConfigSkipExamplesExemptsExampleConditionals(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "sample/example_test.go", `package sample_test
+
+import (
+	"fmt"
+	"testing"
+)
+
+func ExampleParse() {
+	if err := error(nil); err != nil {
+		fmt.Println(err)
+	}
+	// Output:
+}
+
+func ExampleParse_variant() {
+	switch 1 {
+	case 1:
+	}
+	// Output:
+}
+
+func TestStillJudged(t *testing.T) {
+	if true {}
+}
+`)
+
+	got, err := teststyle.ScanWithConfig(dir, teststyle.Config{SkipExamples: true})
+
+	assertNoError(t, err)
+	assertDeepEqual(t, got, teststyle.Baseline{
+		TestConditionals: []teststyle.ConditionalBaseline{
+			{Path: "sample/example_test.go", Function: "TestStillJudged", Kind: "if", Count: 1},
+		},
+	})
+}
+
+func TestScanDefaultStillReportsExampleConditionals(t *testing.T) {
+	dir := t.TempDir()
+	writeFile(t, dir, "sample/example_test.go", `package sample_test
+
+import "fmt"
+
+func ExampleParse() {
+	if err := error(nil); err != nil {
+		fmt.Println(err)
+	}
+	// Output:
+}
+`)
+
+	got, err := teststyle.Scan(dir)
+
+	assertNoError(t, err)
+	assertDeepEqual(t, got, teststyle.Baseline{
+		TestConditionals: []teststyle.ConditionalBaseline{
+			{Path: "sample/example_test.go", Function: "ExampleParse", Kind: "if", Count: 1},
+		},
+	})
+}
+
 func TestScanIgnoresNonTestHelpersWithTestPrefixes(t *testing.T) {
 	dir := t.TempDir()
 	writeFile(t, dir, "sample/helpers_test.go", `package sample_test

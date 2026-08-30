@@ -23,6 +23,13 @@ It provides:
 `for` loops are allowed so table-driven tests can stay compact. Helper functions
 may contain conditionals, but helpers should not hide assertion-selection logic.
 
+Parameterless `Example*` functions can be exempted from the conditional rules
+with the `-skip-examples` flag (`skip_examples` in plugin settings). An example
+is documentation first: the `if err != nil` it shows is often exactly what a
+reader should copy, so a repository can keep examples idiomatic while holding
+`Test*` and `Fuzz*` functions declarative. The white-box file rules still apply
+to example files.
+
 ## Bad And Good Examples
 
 ### `teststyle-no-if`
@@ -183,6 +190,12 @@ Disable individual rules:
 
 ```bash
 go tool teststyle -disable teststyle-no-if,teststyle-no-switch
+```
+
+Keep examples idiomatic while holding tests declarative:
+
+```bash
+go tool teststyle -skip-examples
 ```
 
 ## golangci-lint Module Plugin
